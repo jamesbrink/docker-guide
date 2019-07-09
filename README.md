@@ -96,12 +96,14 @@ Once build completes you should see the new docker image, since we added a label
 docker images --filter=label=examples=layers
 ```
 
-You will see the image is ~200MB uncompressed. Now lets inspect the image a bit more.  
+You will see the image is ~200MB uncompressed. Now lets inspect the image a bit more with the `history` command.  
 
 Running the history command will show you each layer with its size.
 ```shell
 docker history jamesbrink/layers/justwrong:latest
 ```
+
+![image history](./images/layers-wrong-history.png "Image history for justwrong.")
 
 You can basically sum the sizes in the the `size` column and calculate the final image size just the same. **The take away here is that removing files, packages etc in later steps does not remove them from the final image's size**
 
@@ -141,12 +143,21 @@ And again let's verify GNU patch is working:
 docker run -i -t jamesbrink/layers/better patch --version
 ```
 
+Lets look at the history for this new image.
+```shell
+docker history jamesbrink/layers/better:latest
+```
+
+![image history](./images/layers-better-history.png "Image history for better.")
+
 Now lets compare the sizes between each of these images:
 ```shell
 docker images --filter=label=examples=layers
 ```
 
 You will see the new image is only ~ 6.54MB, this is a drastic difference from the original 200MB image. Feel free to inspect the history which is now down from 19 layers to 5.
+
+![image sizes](./images/layers-diff.png "Difference between right and wrong.")
 
 # Base Images
 
