@@ -1,0 +1,19 @@
+FROM alpine:3.10
+RUN set -xe; \
+    apk add --no-cache --virtual .build-deps \
+        alpine-sdk \
+        wget \
+        xz; \
+    mkdir -p /build; \
+    cd /build; \
+    wget http://ftp.gnu.org/gnu/patch/patch-2.7.6.tar.xz; \
+    tar xfv patch-2.7.6.tar.xz; \
+    cd /build/patch-2.7.6; \
+    ./configure --prefix=/usr/local/; \
+    make; \
+    make install; \
+    cd /; \
+    rm -rf /build; \
+    apk del .build-deps;
+
+LABEL examples=layers
