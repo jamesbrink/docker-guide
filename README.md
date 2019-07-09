@@ -1,7 +1,7 @@
 # No Bullshit guide for building Docker images
 
 # About
-This repository is going to serve as my guide to building solid docker images. It will likely be highly opinionated and possibly incorrect in places. pull requests and recommendations are always welcome. 
+This repository is going to serve as my guide to building solid docker images. It will likely be highly opinionated and possibly incorrect in places. I will try to focus only on areas that seem to have general misconceptions for novice Docker users. Pull Requests and recommendations are always welcome. 
 
 This guide is setup to be cloned locally if you would like to run through he examples. 
 To do this I recommend you have the following tools available on your machine:  
@@ -17,12 +17,14 @@ To do this I recommend you have the following tools available on your machine:
 - [Table of contents](#Table-of-contents)
 - [Dockerfile Unraveled](#Dockerfile-Unraveled)
   - [Shell](#Shell)
-  - [Instructions & Layers](#Instructions--Layers)
+  - [Image Layers](#Image-Layers)
     - [The wrong way](#The-wrong-way)
     - [The better way](#The-better-way)
     - [Multistage Bonus Example](#Multistage-Bonus-Example)
+  - [Order of instructions is important](#Order-of-instructions-is-important)
 - [Base Images](#Base-Images)
   - [Always use a tagged image](#Always-use-a-tagged-image)
+  - [A Caution on floating tags](#A-Caution-on-floating-tags)
 
 # Dockerfile Unraveled
 
@@ -48,9 +50,10 @@ RUN exec("apk add vim")
 RUN exec("ls -lart /foo/")
 ```
 
-It will create a directory with and empty file called `/foo/bar.txt` and install `vim`. **The point I am trying to make is that the sh script is not really a requirement of the Dockerfile, just the default**
+It will create a directory with and empty file called `/foo/bar.txt` and install `vim`.  
+**The point I am trying to make is that the shell script is not really a requirement of the Dockerfile and build process, it's just the default**
 
-## Instructions & Layers
+## Image Layers
 
 Given the information above, knowing shell scripting is helpful, but what you really need to understand more than anything is how the Dockerfile instructions are run.
 
@@ -58,7 +61,7 @@ Instructions are things such as `FROM`, `RUN`, `ENV`, `EXPOSE`, etc. They are al
 
 ### The wrong way
 
-It's important to understand that these layers are immutable in a similar way to a git commit. Take the following extreme example of how not to build Docker images. For this example we will download and build **GNU patch**
+It's important to understand that these layers are immutable in a similar way to a git commits. Take the following extreme example of how not to build Docker images. For this example we will download and build **GNU patch**
 
 ```Dockerfile
 FROM alpine:3.10
@@ -186,12 +189,61 @@ COPY --from=builder /usr/local /usr/local
 LABEL examples=layers
 ```
 
-**Notice when building this, it will re-use cache from original build** we will touch on this later!
+**Notice when building this, it will re-use cache from original build** we will touch on this later, but this is one caveat where having multiple layers like the original bad example could be advantageous. 
 ```shell
 docker build --file=examples/layers/Dockerfile.better.multi-stage -t jamesbrink/layers/better-multi .
 ```
 
 ![layers multi stage builds](./images/layers-multi-stage.png "Multi Stage builds.")
+
+## Order of instructions is important
+
+It's important to understand how the order of the instructions impact the re-use of cache. This is a very simple concept, but one that I see overlooked by people who are new to building Docker images.  
+
+Let's rebuild the Dockerfile.justwrong mentioned in the previous section. We will use this one just to demonstrate caching. If you have not built it yet run the following:  
+```shell
+docker build --file=examples/layers/Dockerfile.justwrong -t jamesbrink/layers/justwrong .
+```
+
+The first build will take a few minutes, but if you re-run the same build command you will see it completes instantly. This is due to Docker's default use of cache. 
+
+Layers/Instructions are cached from top to bottom, its this simple. Let's build a nearly identical Docker image.
+
+```Dockerfile
+FROM alpine:3.10
+RUN apk add alpine-sdk
+RUN apk add wget
+RUN mkdir /build
+WORKDIR /build
+RUN wget http://ftp.gnu.org/gnu/patch/patch-2.7.6.tar.xz
+RUN apk add xz
+RUN tar xfv patch-2.7.6.tar.xz
+WORKDIR /build/patch-2.7.6
+RUN pwd
+RUN ./configure --prefix=/usr/local/
+RUN make
+RUN make install
+RUN apk del alpine-sdk
+RUN apk del xz
+RUN apk del wget
+RUN rm -rf /build
+LABEL examples=layers
+```
+
+The only change here is the addition of line #10 `RUN pwd`, a useless instruction to print our working directory. Lets
+run the build:
+```shell
+docker build --file=examples/layers/Dockerfile.cache.busting -t jamesbrink/layers/cache-busting .
+```
+
+What you will notice is that it will re-use cache for all steps leading up the new `RUN pwd` instruction. From this line on it will create new image layers for all instructions until it completes the build. The end result is essentially the same, just with different image layers after this `RUN pwd` instruction. In the following output you will notice the image IDs are identical up until this new instruction (read history from bottom to top). 
+
+![cache busting](./images/layers-cache-busting.png "Cache busting.")
+
+This basic knowledge will be vital when you start working on larger more complex Docker builds. It's also worth noting that docker images built on different hosts will contains different sha256 sums. This is to protect against nasty things like cache poising.
+
+**If you're familiar with git, you could almost look at this like a branch or fork.**
+
 
 
 # Base Images
@@ -208,6 +260,12 @@ consistent, you should not have any surprises when you try to re-build the image
 ```Dockerfile
 FROM alpine:3.10
 ```
+
+## A Caution on floating tags
+
+It's important to note the difference between some common image tags such as **latest** and **stable**. These are floating tags meaning the underlying image will change over time. This one can bite you hard if you are unaware. Some images such as [Debian](https://hub.docker.com/_/debian/?tab=tags) use a stable tag, and whenever there is a new stable release of Debian this tag will be updated and could potentially break your Docker builds. An example of this is Debian 9 being released making the stable tag move from debian:8 to debian:9. It's not the end of the world, but just be aware of this, and how it could effect your builds.  
+
+Additional some people like to update versioned tags the same way, nothing you can do about that.
 
 
 
