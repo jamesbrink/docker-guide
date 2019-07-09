@@ -240,7 +240,15 @@ What you will notice is that it will re-use cache for all steps leading up the n
 
 ![cache busting](./images/layers-cache-busting.png "Cache busting.")
 
-This basic knowledge will be vital when you start working on larger more complex Docker builds. It's also worth noting that docker images built on different hosts will contains different sha256 sums. This is to protect against nasty things like cache poising.
+This basic knowledge will be vital when you start working on larger more complex Docker builds. It's also worth noting that docker images built on different hosts will contains different sha256 sums. This is to protect against nasty things like cache poising.  
+
+If you would like to use cache from a build created on another host you could use `--cache-from=` command line option.
+
+```shell
+docker build my image . --cache-from=some-other-image
+```
+
+Here is an example of this from one of my other projects [docker-darling cached build](https://github.com/utensils/docker-darling/blob/master/Makefile#L40). This particular image takes 3 hours to build so it's a life saver on circle-ci.
 
 **If you're familiar with git, you could almost look at this like a branch or fork.**
 
