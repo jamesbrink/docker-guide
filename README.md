@@ -20,6 +20,7 @@ To do this I recommend you have the following tools available on your machine:
   - [Instructions & Layers](#Instructions--Layers)
     - [The wrong way](#The-wrong-way)
     - [The better way](#The-better-way)
+    - [Multistage Bonus Example](#Multistage-Bonus-Example)
 - [Base Images](#Base-Images)
   - [Always use a tagged image](#Always-use-a-tagged-image)
 
@@ -148,7 +149,7 @@ Lets look at the history for this new image.
 docker history jamesbrink/layers/better:latest
 ```
 
-![image history](./images/layers-better-history.png "Image history for better.")
+![layers image history](./images/layers-better-history.png "Image history for better.")
 
 Now lets compare the sizes between each of these images:
 ```shell
@@ -157,7 +158,41 @@ docker images --filter=label=examples=layers
 
 You will see the new image is only ~ 6.54MB, this is a drastic difference from the original 200MB image. Feel free to inspect the history which is now down from 19 layers to 5.
 
-![image sizes](./images/layers-diff.png "Difference between right and wrong.")
+![layers image sizes](./images/layers-diff.png "Difference between right and wrong.")
+
+### Multistage Bonus Example
+
+It's worth noting briefly that in cases like this you can still use the original bad example and produce a clean image 
+using multi-stage builds. Notice i removed the cleanup commands from this image to show how they are not required.
+
+```Dockerfile
+FROM alpine:3.10 as builder
+RUN apk add alpine-sdk
+RUN apk add wget
+RUN mkdir /build
+WORKDIR /build
+RUN wget http://ftp.gnu.org/gnu/patch/patch-2.7.6.tar.xz
+RUN apk add xz
+RUN tar xfv patch-2.7.6.tar.xz
+WORKDIR /build/patch-2.7.6
+RUN ./configure --prefix=/usr/local/
+RUN make
+RUN make install
+
+FROM alpine:3.10
+
+COPY --from=builder /usr/local /usr/local
+
+LABEL examples=layers
+```
+
+**Notice when building this, it will re-use cache from original build** we will touch on this later!
+```shell
+docker build --file=examples/layers/Dockerfile.better.multi-stage -t jamesbrink/layers/better-multi .
+```
+
+![layers multi stage builds](./images/layers-multi-stage.png "Multi Stage builds.")
+
 
 # Base Images
 

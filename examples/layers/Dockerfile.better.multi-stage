@@ -1,0 +1,18 @@
+FROM alpine:3.10 as builder
+RUN apk add alpine-sdk
+RUN apk add wget
+RUN mkdir /build
+WORKDIR /build
+RUN wget http://ftp.gnu.org/gnu/patch/patch-2.7.6.tar.xz
+RUN apk add xz
+RUN tar xfv patch-2.7.6.tar.xz
+WORKDIR /build/patch-2.7.6
+RUN ./configure --prefix=/usr/local/
+RUN make
+RUN make install
+
+FROM alpine:3.10
+
+COPY --from=builder /usr/local /usr/local
+
+LABEL examples=layers
