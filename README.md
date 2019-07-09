@@ -1,6 +1,6 @@
 # No Bullshit guide for building Docker images
 
-## About
+# About
 This repository is going to serve as my guide to building solid docker images. It will likely be highly opinionated and possibly incorrect in places. pull requests and recommendations are always welcome. 
 
 This guide is setup to be cloned locally if you would like to run through he examples. 
@@ -13,7 +13,7 @@ To do this I recommend you have the following tools available on your machine:
   
 # Table of contents
 - [No Bullshit guide for building Docker images](#No-Bullshit-guide-for-building-Docker-images)
-  - [About](#About)
+- [About](#About)
 - [Table of contents](#Table-of-contents)
 - [Dockerfile Unraveled](#Dockerfile-Unraveled)
   - [Shell](#Shell)
